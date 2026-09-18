@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chara Sewa Video</title>
+<style>
+    body {
+        font-family: system-ui, -apple-system, sans-serif;
+        background: linear-gradient(135deg, #f9f9fb, #eef2f7);
+        margin: 0;
+        padding: 20px 16px;
+        color: #111;
+    }
+    h1 {
+        text-align: center;
+        color: #c2185b;
+        margin: 0 0 12px;
+        font-size: 2.1rem;
+        line-height: 1.35;
+    }
+    .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 24px;
+        max-width: 1920px;
+        margin: 0 auto;
+    }
+    .card {
+        background: white;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 18px rgba(0,0,0,0.08);
+        transition: all 0.24s ease;
+    }
+    .card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 16px 40px rgba(0,0,0,0.14);
+    }
+    video {
+        width: 100%;
+        display: block;
+        background: #000;
+    }
+    .btn-wrap {
+        padding: 14px;
+        text-align: center;
+    }
+    .dl-btn {
+        display: inline-block;
+        padding: 12px 26px;
+        background: #F43576;
+        color: white !important;
+        border: none;
+        border-radius: 999px;
+        text-decoration: none !important;
+        font-weight: 600;
+        font-size: 1.05rem;
+        cursor: pointer;
+        transition: all 0.25s;
+    }
+    .dl-btn:hover {
+        background: #d81b60;
+        transform: scale(1.04);
+    }
+    .dl-btn:disabled {
+        opacity: 0.7;
+        cursor: wait;
+    }
+
+    @media (max-width: 900px) { .grid { gap: 18px; } }
+    @media (max-width: 600px) {
+        h1 { font-size: 1.7rem; }
+    }
+</style>
+</head>
+<body>
+
+<h1>Chara Sewa Video</h1>
+<br>
+
+<div class="grid" id="videoGrid"></div>
+
+<script>
+const baseUrl = "https://santrampalji-files.sgp1.cdn.digitaloceanspaces.com/www.satsaheb.org/trending/Chara-Sewa/";
+const totalVideos = 129;
+const grid = document.getElementById('videoGrid');
+
+// Cards banaye
+for (let i = 1; i <= totalVideos; i++) {
+    const url = `${baseUrl}chara${i}.mp4`;
+    const name = `chara${i}.mp4`;
+
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+        <video controls preload="metadata">
+            <source src="${url}" type="video/mp4">
+        </video>
+        <div class="btn-wrap">
+            <button class="dl-btn" data-url="${url}" data-name="${name}">
+                <b>Download Video (10 MB)</b>
+            </button>
+        </div>
+    `;
+    grid.appendChild(card);
+}
+
+// Force download function
+async function forceDownload(url, filename, btn) {
+    try {
+        btn.disabled = true;
+        btn.querySelector('b').textContent = 'Downloading...';
+
+        const res = await fetch(url);
+        const blob = await res.blob();
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(a.href);
+
+        btn.querySelector('b').textContent = 'Downloaded ✓';
+        setTimeout(() => {
+            btn.disabled = false;
+            const cards = Array.from(document.querySelectorAll('.card'));
+            const index = cards.indexOf(btn.closest('.card'));
+            btn.querySelector('b').textContent = `Download Video ${index + 1} (10 MB)`;
+        }, 1500);
+    } catch (e) {
+        // fallback
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.target = '_blank';
+        a.click();
+        btn.disabled = false;
+        btn.querySelector('b').textContent = 'Download Video (10 MB)';
+    }
+}
+
+// Shuffle + numbering + click events
+document.addEventListener('DOMContentLoaded', () => {
+    const cards = Array.from(grid.querySelectorAll('.card'));
+
+    // Fisher-Yates shuffle
+    for (let i = cards.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [cards[i], cards[j]] = [cards[j], cards[i]];
+    }
+    cards.forEach(card => grid.appendChild(card));
+
+    // Number update + download click
+    cards.forEach((card, index) => {
+        const btn = card.querySelector('.dl-btn');
+        if (btn) {
+            btn.querySelector('b').textContent = `Download Video ${index + 1} (10 MB)`;
+            btn.addEventListener('click', () => {
+                forceDownload(btn.dataset.url, btn.dataset.name, btn);
+            });
+        }
+    });
+});
+</script>
+
+</body>
+</html>
