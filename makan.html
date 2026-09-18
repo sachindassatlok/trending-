@@ -37,41 +37,11 @@
         transform: translateY(-8px);
         box-shadow: 0 16px 40px rgba(0,0,0,0.14);
     }
-    .video-wrap {
-        position: relative;
-        background: #111;
-        min-height: 180px;
-    }
     video {
         width: 100%;
         display: block;
         background: #000;
         min-height: 180px;
-    }
-    .play-overlay {
-        position: absolute;
-        inset: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: rgba(0,0,0,0.45);
-        cursor: pointer;
-        z-index: 2;
-    }
-    .play-overlay span {
-        width: 64px;
-        height: 64px;
-        border-radius: 50%;
-        background: #F43576;
-        color: #fff;
-        font-size: 28px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-    }
-    .play-overlay.hidden {
-        display: none;
     }
     .btn-wrap {
         padding: 14px;
@@ -118,14 +88,9 @@ for (let i = 1; i <= totalVideos; i++) {
     const card = document.createElement('div');
     card.className = 'card';
     card.innerHTML = `
-        <div class="video-wrap">
-            <video controls preload="none" playsinline>
-                <source src="${url}" type="video/mp4">
-            </video>
-            <div class="play-overlay">
-                <span>▶</span>
-            </div>
-        </div>
+        <video controls preload="metadata" playsinline muted>
+            <source src="${url}" type="video/mp4">
+        </video>
         <div class="btn-wrap">
             <button class="dl-btn" data-url="${url}" data-name="${name}">
                 <b>Download Video (10 MB)</b>
@@ -146,6 +111,25 @@ function downloadVideo(url, filename) {
     a.remove();
 }
 
+// Automatic first-frame preview
+function showPreview(video) {
+    const onMeta = () => {
+        try {
+            // pehla frame force load
+            if (video.duration && video.duration > 0.3) {
+                video.currentTime = 0.2;
+            } else {
+                video.currentTime = 0.1;
+            }
+        } catch (e) {}
+        video.removeEventListener('loadedmetadata', onMeta);
+    };
+    video.addEventListener('loadedmetadata', onMeta);
+
+    // agar pehle se metadata ready ho
+    if (video.readyState >= 1) onMeta();
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     const cards = Array.from(grid.querySelectorAll('.card'));
 
@@ -156,11 +140,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     cards.forEach(card => grid.appendChild(card));
 
-    // Number + events
     cards.forEach((card, index) => {
         const btn = card.querySelector('.dl-btn');
         const video = card.querySelector('video');
-        const overlay = card.querySelector('.play-overlay');
 
         if (btn) {
             btn.querySelector('b').textContent = `Download Video ${index + 1} (10 MB)`;
@@ -169,19 +151,21 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        // Overlay click → load + play
-        if (overlay && video) {
-            overlay.addEventListener('click', () => {
-                overlay.classList.add('hidden');
-                video.preload = 'auto';
-                video.load();
-                video.play().catch(() => {});
-            });
+        if (video) {
+            showPreview(video);
 
-            // Controls se play ho to overlay hata do
-            video.addEventListener('play', () => {
-                overlay.classList.add('hidden');
-            });
+            // Intersection Observer — screen pe aate hi load
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        video.preload = 'metadata';
+                        video.load();
+                        showPreview(video);
+                        observer.unobserve(video);
+                    }
+                });
+            }, { rootMargin: '100px' });
+            observer.observe(video);
         }
     });
 });
